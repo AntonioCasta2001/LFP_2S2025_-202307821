@@ -8,21 +8,34 @@
 
 
 class Token {
-    constructor(tipo, valor, linea, columna) {
-        this.tipo = tipo;
-        this.valor = valor;
-        this.linea = linea;
-        this.columna = columna;
-    }
+  constructor(tipo, valor, linea, columna) {
+    this.tipo = tipo;
+    this.valor = valor;
+    this.linea = linea;
+    this.columna = columna;
+  }
 }
 
 // Algunas palabras clave de ejemplo:
 const palabras_clave = {
-    TORNEO: 'TORNEO',
-    EQUIPOS: 'EQUIPOS',
-    ELIMINACION: 'ELIMINACION',
-    FINAL: 'FINAL',
-    PARTIDO: 'PARTIDO'
+  TORNEO: 'TORNEO',
+  EQUIPOS: 'EQUIPOS',
+  EQUIPO: 'EQUIPO',
+  JUGADOR: 'JUGADOR',
+  POSICION: 'POSICION',
+  NUMERO: 'NUMERO',
+  EDAD: 'EDAD',
+  ELIMINACION: 'ELIMINACION',
+  CUARTOS: 'CUARTOS',
+  OCTAVOS: 'OCTAVOS',
+  PARTIDO: 'PARTIDO',
+  RESULTADO: 'RESULTADO',
+  GOLEADORES: 'GOLEADORES',
+  GOLEADOR: 'GOLEADOR',
+  MINUTO: 'MINUTO',
+  FINAL: 'FINAL',
+  VS: 'VS',
+  PARTIDO: 'PARTIDO'
 };
 
 // Algunos símbolos reconocidos:
@@ -33,12 +46,26 @@ class AnalizadorLexicoTorneos {
     this.palabras_clave = {
       TORNEO: 'TORNEO',
       EQUIPOS: 'EQUIPOS',
+      EQUIPO: 'EQUIPO',
+      JUGADOR: 'JUGADOR',
+      POSICION: 'POSICION',
+      NUMERO: 'NUMERO',
+      EDAD: 'EDAD',
       ELIMINACION: 'ELIMINACION',
+      CUARTOS: 'CUARTOS',
+      OCTAVOS: 'OCTAVOS',
+      PARTIDO: 'PARTIDO',
+      RESULTADO: 'RESULTADO',
+      GOLEADORES: 'GOLEADORES',
+      GOLEADOR: 'GOLEADOR',
+      MINUTO: 'MINUTO',
       FINAL: 'FINAL',
+      VS: 'VS',
       PARTIDO: 'PARTIDO'
     };
 
     this.simbolos = ['{', '}', '[', ']', ':', ','];
+    this.gestorErrores = gestorErrores;
   }
 
   analizar(entrada) {
@@ -65,7 +92,7 @@ class AnalizadorLexicoTorneos {
         } else if (/\s/.test(char)) {
           // Ignorar espacios
         } else {
-          console.error(`Error léxico en posición ${index}: carácter inesperado '${char}'`);
+          this.gestorErrores.agregarError(`Carácter inesperado '${char}'`, 1, index);
         }
       }
 
@@ -123,10 +150,47 @@ class AnalizadorLexicoTorneos {
     return lista_tokens;
   }
 }
+class imprimirTokens {
+  static imprimir(lista_tokens) {
+    console.log('--- TOKENS RECONOCIDOS ---');
+    lista_tokens.forEach(token => {
+      console.log(`Tipo: ${token.tipo}, Valor: "${token.valor}", Posición: Línea ${token.linea}, Columna ${token.columna}`);
+    });
+  }
+}
 
+class imprimirErrores {
+  constructor() {
+    this.errores = [];
+  }
 
-const entrada = 'TORNEO { EQUIPOS: 4, PARTIDOS: "Final"}';
-const analizador = new AnalizadorLexicoTorneos();
-const tokens = analizador.analizar(entrada)
-console.log(tokens);
+  agregarError(mensaje, linea, columna) {
+    this.errores.push({ mensaje, linea, columna });
+  }
 
+  imprimirErrores() {
+    if (this.errores.length === 0) {
+      console.log('No se encontraron errores léxicos.');
+      return;
+    }
+
+    console.log('--- ERRORES LÉXICOS ---');
+    this.errores.forEach(error => {
+      console.log(`Error: ${error.mensaje} en Línea ${error.linea}, Columna ${error.columna}`);
+    });
+  }
+}
+
+const entrada = `
+TORNEO: "Champions League",
+EQUIPOS: [RealMadrid, Barcelona, Juventus],
+PARTIDO: { VS: RealMadrid-Juventus, MINUTO: 90, RESULTADO: "2-1" },
+$ErrorSimbolo
+`;
+
+const gestorErrores = new imprimirErrores();
+const analizador = new AnalizadorLexicoTorneos(gestorErrores);
+const tokens = analizador.analizar(entrada);
+
+imprimirTokens.imprimir(tokens);
+gestorErrores.imprimirErrores();

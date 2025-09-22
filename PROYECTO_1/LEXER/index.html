@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Analizador Léxico de Torneos</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    table { border-collapse: collapse; width: 100%; margin-bottom: 30px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+    th { background-color: #f2f2f2; }
+    h2 { color: #333; }
+  </style>
+</head>
+<body>
+
+  <h1>⚽ Analizador Léxico de Torneos</h1>
+  <input type="file" id="archivoEntrada" accept=".txt" />
+  <button onclick="procesarArchivo()">Analizar archivo</button>
+
+  <h2>📦 Tokens Reconocidos</h2>
+  <table id="tablaTokens"></table>
+
+  <h2>❌ Errores Léxicos</h2>
+  <table id="tablaErrores"></table>
+
+  <script>
+    class Token {
+      constructor(tipo, valor, linea, columna) {
+        this.tipo = tipo;
+        this.valor = valor;
+        this.linea = linea;
+        this.columna = columna;
+      }
+    }
+
+    class ImpresorErrores {
+      constructor() {
+        this.errores = [];
+      }
+
+      agregarError(mensaje, linea, columna, tipo = 'Token inválido', lexema = '') {
+        this.errores.push({ mensaje, linea, columna, tipo, lexema });
+      }
+
+      imprimirErrores() {
+        console.log('❌ ERRORES LÉXICOS:');
+        this.errores.forEach((error, i) => {
+          console.log(`${i + 1}. ${error.tipo} - ${error.mensaje} (${error.linea}:${error.columna})`);
+        });
+      }
+    }
+
+    class ImpresorTokens {
+      static imprimir(lista_tokens) {
+        console.log('📦 TOKENS RECONOCIDOS:');
+        lista_tokens.forEach(token => {
+          console.log(`- Tipo: ${token.tipo}, Valor: "${token.valor}", Línea: ${token.linea}, Columna: ${token.columna}`);
+        });
+      }
+    }
+
+    class AnalizadorLexicoTorneos {
+      constructor(impresorErrores) {
+        this.palabras_clave = {
+          TORNEO: 'TORNEO',
+          EQUIPOS: 'EQUIPOS',
+          ELIMINACION: 'ELIMINACION',
+          FINAL: 'FINAL',
+          PARTIDO: 'PARTIDO'
+        };
+        this.simbolos = ['{', '}', '[', ']', ':', ','];
+        this.impresorErrores = impresorErrores;
+      }
+
+      analizar(entrada) {
+        let estado = 0;
+        let buffer = '';
+        let index = 0;
+        let linea = 1;
+        let columna = 1;
+        let lista_tokens = [];
+
+        while (index < entrada.length) {
+          const char = entrada[index];
+
+          if (char === '\n') {
+            linea++;
+            columna = 0;
+          }
+
+          if (estado === 0) {
+            if (this.simbolos.includes(char)) {
+              lista_tokens.push(new Token('simbolo', char, linea, columna));
+            } else if (char === '"') {
+              buffer = '';
+              estado = 1;
+            } else if (/[a-zA-Z_]/.test(char)) {
+              buffer = char;
+              estado = 2;
+            } else if (/\d/.test(char)) {
+              buffer = char;
+              estado = 3;
+            } else if (/\s/.test(char)) {
+              // Ignorar espacios
+            } else {
+              this.impresorErrores.agregarError(`Carácter inesperado '${char}'`, linea, columna);
+            }
+          }
+
+          else if (estado === 1) {
+            if (char !== '"') {
+              buffer += char;
+            } else {
+              lista_tokens.push(new Token('cadena', buffer, linea, columna));
+              estado = 0;
+            }
+          }
+
+          else if (estado === 2) {
+            if (/[a-zA-Z0-9]/.test(char)) {
+              buffer += char;
+            } else {
+              const palabra = buffer.toUpperCase();
+              if (this.palabras_clave[palabra]) {
+                lista_tokens.push(new Token('palabra_clave', palabra, linea, columna));
+              } else {
+                lista_tokens.push(new Token('identificador', buffer, linea, columna));
+              }
+              estado = 0;
+              continue;
+            }
+          }
+
+          else if (estado === 3) {
+            if (/\d/.test(char)) {
+              buffer += char;
+            } else {
+              lista_tokens.push(new Token('numero', buffer, linea, columna));
+              estado = 0;
+              continue;
+            }
+          }
+
+          index++;
+          columna++;
+        }
+
+        if (estado === 2) {
+          const palabra = buffer.toUpperCase();
+          if (this.palabras_clave[palabra]) {
+            lista_tokens.push(new Token('palabra_clave', palabra, linea, columna));
+          } else {
+            lista_tokens.push(new Token('identificador', buffer, linea, columna));
+          }
+        }
+
+        if (estado === 3) {
+          lista_tokens.push(new Token('numero', buffer, linea, columna));
+        }
+
+        return lista_tokens;
+      }
+    }
+
+    function procesarArchivo() {
+      const archivo = document.getElementById('archivoEntrada').files[0];
+      if (!archivo) {
+        alert('Por favor selecciona un archivo de texto.');
+        return;
+      }
+
+      const lector = new FileReader();
+      lector.onload = function (e) {
+        const contenido = e.target.result;
+
+        const impresorErrores = new ImpresorErrores();
+        const analizador = new AnalizadorLexicoTorneos(impresorErrores);
+        const tokens = analizador.analizar(contenido);
+
+        ImpresorTokens.imprimir(tokens);
+        impresorErrores.imprimirErrores();
+
+        mostrarTokens(tokens);
+        mostrarErrores(impresorErrores.errores);
+      };
+
+      lector.readAsText(archivo);
+    }
+
+    function mostrarTokens(tokens) {
+      const tabla = document.getElementById('tablaTokens');
+      tabla.innerHTML = `
+        <tr>
+          <th>#</th>
+          <th>Tipo</th>
+          <th>Valor</th>
+          <th>Línea</th>
+          <th>Columna</th>
+        </tr>
+      `;
+
+      tokens.forEach((token, i) => {
+        const fila = tabla.insertRow();
+        fila.innerHTML = `
+          <td>${i + 1}</td>
+          <td>${token.tipo}</td>
+          <td>${token.valor}</td>
+          <td>${token.linea}</td>
+          <td>${token.columna}</td>
+        `;
+      });
+    }
+
+    function mostrarErrores(errores) {
+      const tabla = document.getElementById('tablaErrores');
+      tabla.innerHTML = `
+        <tr>
+          <th>#</th>
+          <th>Lexema</th>
+          <th>Tipo de Error</th>
+          <th>Descripción</th>
+          <th>Línea</th>
+          <th>Columna</th>
+        </tr>
+      `;
+
+      errores.forEach((error, i) => {
+        const fila = tabla.insertRow();
+        fila.innerHTML = `
+          <td>${i + 1}</td>
+          <td>${error.lexema || '—'}</td>
+          <td>${error.tipo}</td>
+          <td>${error.mensaje}</td>
+          <td>${error.linea}</td>
+          <td>${error.columna}</td>
+        `;
+      });
+    }
+  </script>
+</body>
+</html>
