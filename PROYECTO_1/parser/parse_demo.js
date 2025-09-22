@@ -7,6 +7,8 @@
 // estado 3: leyendo número
 
 
+
+// Token.js
 class Token {
   constructor(tipo, valor, linea, columna) {
     this.tipo = tipo;
@@ -16,7 +18,7 @@ class Token {
   }
 }
 
-// Algunas palabras clave de ejemplo:
+// Palabras clave y símbolos
 const palabras_clave = {
   TORNEO: 'TORNEO',
   EQUIPOS: 'EQUIPOS',
@@ -34,130 +36,10 @@ const palabras_clave = {
   GOLEADOR: 'GOLEADOR',
   MINUTO: 'MINUTO',
   FINAL: 'FINAL',
-  VS: 'VS',
-  PARTIDO: 'PARTIDO'
+  VS: 'VS'
 };
 
-// Algunos símbolos reconocidos:
 const simbolos = ['{', '}', '[', ']', ':', ','];
-
-class AnalizadorLexicoTorneos {
-  constructor() {
-    this.palabras_clave = {
-      TORNEO: 'TORNEO',
-      EQUIPOS: 'EQUIPOS',
-      EQUIPO: 'EQUIPO',
-      JUGADOR: 'JUGADOR',
-      POSICION: 'POSICION',
-      NUMERO: 'NUMERO',
-      EDAD: 'EDAD',
-      ELIMINACION: 'ELIMINACION',
-      CUARTOS: 'CUARTOS',
-      OCTAVOS: 'OCTAVOS',
-      PARTIDO: 'PARTIDO',
-      RESULTADO: 'RESULTADO',
-      GOLEADORES: 'GOLEADORES',
-      GOLEADOR: 'GOLEADOR',
-      MINUTO: 'MINUTO',
-      FINAL: 'FINAL',
-      VS: 'VS',
-      PARTIDO: 'PARTIDO'
-    };
-
-    this.simbolos = ['{', '}', '[', ']', ':', ','];
-    this.gestorErrores = gestorErrores;
-  }
-
-  analizar(entrada) {
-    let estado = 0;
-    let buffer = '';
-    let index = 0;
-    let lista_tokens = [];
-
-    while (index < entrada.length) {
-      const char = entrada[index];
-
-      if (estado === 0) {
-        if (this.simbolos.includes(char)) {
-          lista_tokens.push(new Token('simbolo', char, index));
-        } else if (char === '"') {
-          buffer = '';
-          estado = 1;
-        } else if (/[a-zA-Z_]/.test(char)) {
-          buffer = char;
-          estado = 2;
-        } else if (/\d/.test(char)) {
-          buffer = char;
-          estado = 3;
-        } else if (/\s/.test(char)) {
-          // Ignorar espacios
-        } else {
-          this.gestorErrores.agregarError(`Carácter inesperado '${char}'`, 1, index);
-        }
-      }
-
-      else if (estado === 1) {
-        if (char !== '"') {
-          buffer += char;
-        } else {
-          lista_tokens.push(new Token('cadena', buffer, index));
-          estado = 0;
-        }
-      }
-
-      else if (estado === 2) {
-        if (/[a-zA-Z0-9]/.test(char)) {
-          buffer += char;
-        } else {
-          const palabra = buffer.toUpperCase();
-          if (this.palabras_clave[palabra]) {
-            lista_tokens.push(new Token('palabra_clave', palabra, index));
-          } else {
-            lista_tokens.push(new Token('identificador', buffer, index));
-          }
-          estado = 0;
-          continue;
-        }
-      }
-
-      else if (estado === 3) {
-        if (/\d/.test(char)) {
-          buffer += char;
-        } else {
-          lista_tokens.push(new Token('numero', buffer, index));
-          estado = 0;
-          continue;
-        }
-      }
-
-      index++;
-    }
-
-    // Finalizar buffers si quedaron abiertos
-    if (estado === 2) {
-      const palabra = buffer.toUpperCase();
-      if (this.palabras_clave[palabra]) {
-        lista_tokens.push(new Token('palabra_clave', palabra, index));
-      } else {
-        lista_tokens.push(new Token('identificador', buffer, index));
-      }
-    }
-
-    if (estado === 3) {
-      lista_tokens.push(new Token('numero', buffer, index));
-    }
-
-    return lista_tokens;
-  }
-}
-class imprimirTokens {
-  static imprimir(lista_tokens) {
-    console.log('--- TOKENS RECONOCIDOS ---');
-    lista_tokens.forEach(token => {
-      console.log(`Tipo: ${token.tipo}, Valor: "${token.valor}", Posición: Línea ${token.linea}, Columna ${token.columna}`);
-    });
-  }
-}
 
 class imprimirErrores {
   constructor() {
@@ -181,16 +63,118 @@ class imprimirErrores {
   }
 }
 
-const entrada = `
-TORNEO: "Champions League",
-EQUIPOS: [RealMadrid, Barcelona, Juventus],
-PARTIDO: { VS: RealMadrid-Juventus, MINUTO: 90, RESULTADO: "2-1" },
-$ErrorSimbolo
-`;
+class imprimirTokens {
+  static imprimir(lista_tokens) {
+    console.log('--- TOKENS RECONOCIDOS ---');
+    lista_tokens.forEach(token => {
+      console.log(`Tipo: ${token.tipo}, Valor: "${token.valor}", Posición: Línea ${token.linea}, Columna ${token.columna}`);
+    });
+  }
+}
+class AnalizadorLexicoTorneos {
+  constructor() {
+    this.palabras_clave = palabras_clave;
+    this.simbolos = simbolos;
+    this.listaTokens = [];
+    this.listaError = [];
+  }
 
-const gestorErrores = new imprimirErrores();
-const analizador = new AnalizadorLexicoTorneos(gestorErrores);
-const tokens = analizador.analizar(entrada);
+  analizar(entrada) {
+    let estado = 0;
+    let buffer = '';
+    let index = 0;
+    let linea = 1;
+    let columna = 1;
 
-imprimirTokens.imprimir(tokens);
-gestorErrores.imprimirErrores();
+    while (index < entrada.length) {
+      const char = entrada[index];
+
+      if (char === '\n') {
+        linea++;
+        columna = 0;
+      }
+
+      if (estado === 0) {
+        if (this.simbolos.includes(char)) {
+          this.listaTokens.push(new Token('simbolo', char, linea, columna));
+        } else if (char === '"') {
+          buffer = '';
+          estado = 1;
+        } else if (/[a-zA-Z_]/.test(char)) {
+          buffer = char;
+          estado = 2;
+        } else if (/\d/.test(char)) {
+          buffer = char;
+          estado = 3;
+        } else if (/\s/.test(char)) {
+          // Ignorar espacios
+        } else {
+          this.listaError.push({ mensaje: `Carácter inesperado '${char}'`, linea, columna });
+        }
+      }
+
+      else if (estado === 1) {
+        if (char !== '"') {
+          buffer += char;
+        } else {
+          this.listaTokens.push(new Token('cadena', buffer, linea, columna));
+          estado = 0;
+        }
+      }
+
+      else if (estado === 2) {
+        if (/[a-zA-Z0-9]/.test(char)) {
+          buffer += char;
+        } else {
+          const palabra = buffer.toUpperCase();
+          if (this.palabras_clave[palabra]) {
+            this.listaTokens.push(new Token('palabra_clave', palabra, linea, columna));
+          } else {
+            this.listaTokens.push(new Token('identificador', buffer, linea, columna));
+          }
+          estado = 0;
+          continue;
+        }
+      }
+
+      else if (estado === 3) {
+        if (/\d/.test(char)) {
+          buffer += char;
+        } else {
+          this.listaTokens.push(new Token('numero', buffer, linea, columna));
+          estado = 0;
+          continue;
+        }
+      }
+
+      index++;
+      columna++;
+    }
+
+    if (estado === 2) {
+      const palabra = buffer.toUpperCase();
+      if (this.palabras_clave[palabra]) {
+        this.listaTokens.push(new Token('palabra_clave', palabra, linea, columna));
+      } else {
+        this.listaTokens.push(new Token('identificador', buffer, linea, columna));
+      }
+    }
+
+    if (estado === 3) {
+      this.listaTokens.push(new Token('numero', buffer, linea, columna));
+    }
+  }
+
+  imprimirTokens() {
+    imprimirTokens.imprimir(this.listaTokens);
+  }
+
+  imprimirErrores() {
+    const gestor = new imprimirErrores();
+    this.listaError.forEach(e => gestor.agregarError(e.mensaje, e.linea, e.columna));
+    gestor.imprimirErrores();
+  }
+}
+
+export default { AnalizadorLexicoTorneos, imprimirErrores, imprimirTokens };
+
