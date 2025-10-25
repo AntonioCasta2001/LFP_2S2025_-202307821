@@ -1,6 +1,6 @@
 import AnalizadorLexico from "./Analisis.js"
 
-class Parser {
+export class Parser {
     constructor(tokens) {
         this.tokens = tokens;
         this.index = 0;
@@ -14,7 +14,6 @@ class Parser {
     avanzar() {
         this.index++;
     }
-
     coincidir(tipoEsperado) {
         const token = this.tokenActual();
         if (token && token.tipo === tipoEsperado) {
@@ -33,15 +32,18 @@ class Parser {
         return this.errors;
     }
     instruccion() {
+        const token = this.tokenActual(); // ← primero declaramos
+
+        if (!token) return;
+
         if (token.tipo === "PUBLIC") {
             this.funcion();
+            return;
         }
-        const token = this.tokenActual();
-        if (!token) return;
 
         if (["INT", "FLOAT", "BOOLEAN"].includes(token.tipo)) {
             this.declaracion();
-        } else if (token.tipo === "ID") {
+        } else if (token.tipo === "IDENTIFICADOR") {
             this.asignacion();
         } else if (token.tipo === "IF") {
             this.ifStatement();
@@ -56,12 +58,12 @@ class Parser {
     }
     declaracion() {
         this.avanzar(); // tipo
-        if (!this.coincidir("ID")) return;
+        if (!this.coincidir("IDENTIFICADOR")) return;
         if (this.tokenActual()?.lexema === "=") {
             this.avanzar();
             this.expresion();
         }
-        this.coincidir("SYM"); // ;
+        this.coincidir("PUNTO&COMA"); // ;
     }
     asignacion() {
         this.avanzar(); // ID
@@ -79,7 +81,7 @@ class Parser {
 
     termino() {
         const token = this.tokenActual();
-        if (["INT", "FLOAT", "ID"].includes(token?.tipo)) {
+        if (["INT", "FLOAT", "IDENTIFICADOR"].includes(token?.tipo)) {
             this.avanzar();
         } else {
             this.errors.push(`Expresión inválida en línea ${token?.linea}`);
@@ -94,32 +96,51 @@ class Parser {
         this.instruccion(); // cuerpo
     }
     bloque() {
-        this.coincidir("SYM"); // {
+        this.coincidir("LLAVE_ABRE");
+        this.termino() // {
         while (this.tokenActual()?.lexema !== "}") {
             this.instruccion();
         }
-        this.coincidir("SYM"); // }
     }
     funcion() {
-        // public static void
-        this.coincidir("PUBLIC");
-        this.coincidir("STATIC");
-        this.coincidir("VOID");
-
-        // nombre de la función
-        if (!this.coincidir("IDENTIFICADOR")) return;
-
-        // parámetros
-        this.coincidirSimbolo("(");
-        if (this.tokenActual()?.tipo === "IDENTIFICADOR") {
-            this.avanzar(); // args
+        //public class Clase:
+        if (this.coincidir("PUBLIC")) {
+            if (this.coincidir("CLASS")) {
+                if (!this.coincidir("IDENTIFICADOR")) return;
+                this.coincidir("LLAVE_ABRE");
+                this.coincidir("PUBLIC");
+                this.coincidir("STATIC");
+                this.coincidir("VOID");
+                this.coincidir("MAIN");
+                this.coincidir("PARENTESIS_ABRE");
+                if (this.tokenActual()?.tipo === "IDENTIFICADOR") {
+                    this.avanzar(); // args
+                    this.coincidir("CORCHETE_ABRE");
+                    this.coincidir("CORCHETE_CIERRA");
+                    this.coincidir("ARGS"); 
+                }
+                this.coincidir("PARENTESIS_CIERRA");
+                this.bloque(); // o instrucciones dentro de la clase o función
+                this.coincidir("LLAVE_CIERRA");
+            } else if (!this.coincidir("CLASS")) {
+                this.errors.push("Se esperaba 'class' después de 'public'");
+                return;
+            }
         }
-        this.coincidirSimbolo(")");
-
-        // cuerpo
-        this.bloque();
     }
 }
-const parser = new Parser(tokens);
-const errores = parser.parse();
 
+const analizador = new AnalizadorLexico();
+analizador.analizar(entrada); // donde codigoFuente es un string con el código Java
+
+if (analizador.listaError.length === 0) {
+    const parser = new Parser(analizador.listaTokens);
+    const erroresSintacticos = parser.parse();
+
+    if (erroresSintacticos.length === 0) {
+        console.log("✅ Análisis sintáctico exitoso.");
+    } else {
+        console.log("❌ Errores sintácticos:");
+        erroresSintacticos.forEach((e, i) => console.log(`${i + 1}. ${e}`));
+    }
+}
