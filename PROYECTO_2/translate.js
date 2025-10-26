@@ -1,3 +1,7 @@
+import Parser from "./parser.js"
+import { AnalizadorLexico } from "./Analisis.js";
+
+
 class Traductor {
     constructor(tokens) {
         this.tokens = tokens;
@@ -93,9 +97,42 @@ class Traductor {
 }
 
 
-class variables {
-
-}
 const traductor = new Traductor(analizador.listaTokens);
 const codigoPython = traductor.traducir();
 console.log("Código Python generado:\n", codigoPython);
+
+function ejecutarTraduccion(codigoFuente) {
+  const analizador = new AnalizadorLexico();
+  analizador.analizar(codigoFuente);
+
+  if (analizador.listaError.length > 0) {
+    return {
+      erroresLexicos: analizador.listaError,
+      erroresSintacticos: [],
+      codigoPython: "",
+      tokens: analizador.listaTokens
+    };
+  }
+
+  const parser = new Parser(analizador.listaTokens);
+  const erroresSintacticos = parser.parse();
+
+  if (erroresSintacticos.length > 0) {
+    return {
+      erroresLexicos: [],
+      erroresSintacticos,
+      codigoPython: "",
+      tokens: analizador.listaTokens
+    };
+  }
+
+  const traductor = new Traductor(analizador.listaTokens);
+  const codigoPython = traductor.traducir();
+
+  return {
+    erroresLexicos: [],
+    erroresSintacticos: [],
+    codigoPython,
+    tokens: analizador.listaTokens
+  };
+}
