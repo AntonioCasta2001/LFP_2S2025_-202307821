@@ -1,5 +1,4 @@
-/* analizador java
-*/
+
 
 class Token {
     constructor(tipo, lexema, linea, columna) {
@@ -58,10 +57,10 @@ export class AnalizadorLexico {
 
     esDigito(c) {
         const code = c.charCodeAt(0);
-        return code >= 48 && code <= 57;     // 0-9
+        return code >= 48 && code <= 57;
     }
     operadores(char) {
-        const ops = ["+", "-", "*", "/", "="];
+        const ops = ["+", "-", "*", "/", "=","==", "!=", "<", ">", "<=", ">=", "++", "--"];
         return ops.includes(char);
     }
     esOperadorCompuesto(char) {
@@ -73,7 +72,7 @@ export class AnalizadorLexico {
         return simbolos.includes(char);
     }
     esEspacio(char) {
-        return /[ \t\n\r]/.test(char);
+        return char === ' ' || char === '\t' || char === '\n' || char === '\r';
     }
     analizar(entrada) {
         this.listaTokens = [];
@@ -123,14 +122,14 @@ export class AnalizadorLexico {
                     this.listaTokens.push(new Token("SIMBOLO", char, linea, columna));
                 } else if (char === ";") {
                     columna += 1;
-                    this.listaTokens.push(new Token("SIMBOLO", char, linea, columna));
+                    this.listaTokens.push(new Token("P&C", char, linea, columna));
                 } else if (char === ",") {
                     columna += 1;
                     this.listaTokens.push(new Token("SIMBOLO", char, linea, columna));
                 } else if (this.operadores(char)) {
                     let siguiente = entrada[index + 1];
                     if (this.esOperadorCompuesto(char, siguiente)) {
-                        this.listaTokens.push(new Token("OP", char + siguiente, linea, columna));
+                        this.listaTokens.push(new Token("OPC", char + siguiente, linea, columna));
                         index++; columna += 2;
                     } else {
                         this.listaTokens.push(new Token("OP", char, linea, columna));
@@ -140,15 +139,15 @@ export class AnalizadorLexico {
                 else if (char === '"') {
                     columna += 1;
                     buffer = '"';
-                    estado = 1; // reading string
+                    estado = 1;
                 } else if (this.identificadores(char)) {
                     columna += 1;
                     buffer = char;
-                    estado = 2; // reading identifier
+                    estado = 2;
                 } else if (this.esDigito(char)) {
                     columna += 1;
                     buffer = char;
-                    estado = 3; // reading number
+                    estado = 3;
                 } else if (this.esEspacio(char)) {
                     if (char === "\t") columna += 4;
                     else if (char === " ") columna += 1;
@@ -167,7 +166,6 @@ export class AnalizadorLexico {
                     );
                 }
             } else if (estado === 1) {
-                // inside string
                 if (char === '"') {
                     columna += 1;
                     buffer += '"';
@@ -225,7 +223,6 @@ export class AnalizadorLexico {
             index += 1;
         }
 
-        // final buffer
         if (buffer && estado !== 0) {
             if (estado === 1) {
                 this.listaError.push(
@@ -282,6 +279,8 @@ let entrada = ` public class Clase{
         int y = 4;
         char z = "David";
         double c = 462;
+        if(n==1){
+        }
     }
 }
 `;
@@ -291,29 +290,7 @@ scanner.imprimirTokens();
 scanner.imprimirErrores();
 
 
-/*class Parser {
-    constructor() {
-        (this.listaTokens = []).at(this.listError = []);
 
-    }
-    parse() {
-        console.log("Parseando...");
-        this.listaTokens.forEach((token) => {
-            console.log(`porcesando token: ${token.tipo} ('${token.lexema}')`);
-            switch (token.tipo) {
-                case "public":
-                    console.log("Estructura de main reconocida.");
-                    break;
-                case "class":
-                    break
-                default:
-                    break;
-            }
-            console.log("Parseo finalizado");
-
-        });
-    }
-}*/
 
 export class Parser {
     constructor(tokens) {
@@ -321,7 +298,7 @@ export class Parser {
         this.index = 0;
         this.errors = [];
     }
-    
+
     tokenActual() {
         return this.tokens[this.index];
     }
@@ -341,14 +318,14 @@ export class Parser {
     }
 
     parse() {
-    console.log("Parseando...");
+        console.log("Parseando...");
         while (this.index < this.tokens.length) {
             this.instruccion();
         }
         return this.errors;
     }
     instruccion() {
-        const token = this.tokenActual(); // ← primero declaramos
+        const token = this.tokenActual();
 
         if (!token) return;
 
@@ -357,7 +334,7 @@ export class Parser {
             return;
         }
 
-        if (["INT","DOUBLE","BOOLEAN", "CHAR"].includes(token.tipo)) {
+        if (["INT", "DOUBLE", "BOOLEAN", "CHAR"].includes(token.tipo)) {
             this.declaracion();
         } else if (token.tipo === "IDENTIFICADOR") {
             this.asignacion();
@@ -367,7 +344,7 @@ export class Parser {
             this.whileStatement();
         } else if (token.tipo === "LLAVE_ABRE" && token.lexema === "{") {
             this.bloque();
-        }  else if (token.tipo === "CENTINELA" && token.lexema === "#"){
+        } else if (token.tipo === "CENTINELA" && token.lexema === "#") {
             this.avanzar();
         } else {
             this.errors.push(`Instrucción inválida en línea ${token.linea}`);
@@ -381,36 +358,35 @@ export class Parser {
             this.avanzar();
             this.expresion();
         }
-        this.coincidir("SIMBOLO"); // ;
+        this.coincidir("P&C"); // ;
     }
     asignacion() {
         this.avanzar(); // ID
         if (!this.coincidir("OP")) return;
         this.expresion();
-        this.coincidir("SIMBOLO"); // ;
+        this.coincidir("P&C"); // ;
     }
     expresion() {
         this.termino();
-        while (["+", "-", "*", "/"].includes(this.tokenActual()?.lexema)) {
+        while (["+", "-", "*", "/","==", "!=", "<", ">", "<=", ">=", "++", "--"].includes(this.tokenActual()?.lexema)) {
             this.avanzar();
             this.termino();
         }
     }
 
     termino() {
-    const token = this.tokenActual();
-    if (["ENTERO", "DOUBLE", "BOOLEAN", "CHAR", "CADENA"].includes(token?.tipo)) {
-        this.avanzar();
-    } else {
-        this.errors.push(`Expresión inválida en línea ${token?.linea}`);
-        this.avanzar();
+        const token = this.tokenActual();
+        if (["ENTERO", "DOUBLE", "BOOLEAN", "CHAR", "CADENA"].includes(token?.tipo)) {
+            this.avanzar();
+        } else {
+            this.errors.push(`Expresión inválida en línea ${token?.linea}`);
+            this.avanzar();
+        }
     }
-}
     ifStatement() {
         this.avanzar(); // if
         this.coincidir("PARENTESIS_ABRE"); // (
         this.expresion();
-        this.coincidir("PARENTESIS_CIERRA"); // )
         this.instruccion(); // cuerpo
     }
     bloque() {
@@ -431,13 +407,13 @@ export class Parser {
                 this.coincidir("MAIN");
                 this.coincidir("PARENTESIS_ABRE");
                 if (this.tokenActual()?.tipo === "IDENTIFICADOR") {
-                    this.avanzar(); // args
+                    this.avanzar();
                     this.coincidir("CORCHETE_ABRE");
                     this.coincidir("CORCHETE_CIERRA");
-                    this.coincidir("ARGS"); 
+                    this.coincidir("ARGS");
                 }
                 this.coincidir("PARENTESIS_CIERRA");
-                this.bloque(); // o instrucciones dentro de la clase o función
+                this.bloque();
                 this.coincidir("LLAVE_CIERRA");
                 this.coincidir("LLAVE_CIERRA");
             } else if (!this.coincidir("CLASS")) {
@@ -449,7 +425,7 @@ export class Parser {
 }
 
 const analizador = new AnalizadorLexico();
-analizador.analizar(entrada); // donde codigoFuente es un string con el código Java
+analizador.analizar(entrada);
 
 if (analizador.listaError.length === 0) {
     const parser = new Parser(analizador.listaTokens);
@@ -474,9 +450,9 @@ class Traductor {
     }
 
     declaracion() {
-        this.avanzar(); // tipo
+        this.avanzar();
         const nombre = this.tokenActual()?.lexema;
-        this.avanzar(); // identificador
+        this.avanzar();
 
         let valor = "None";
         if (this.tokenActual()?.lexema === "=") {
@@ -490,10 +466,10 @@ class Traductor {
 
     asignacion() {
         const nombre = this.tokenActual()?.lexema;
-        this.avanzar(); // identificador
-        this.avanzar(); // =
+        this.avanzar();
+        this.avanzar();
         const valor = this.expresion();
-        this.avanzar(); // ;
+        this.avanzar();
         this.escribir(`${nombre} = ${valor}`);
     }
     expresion() {
