@@ -6,46 +6,6 @@ class Traductor {
         this.indentacion = 0;
     }
 
-    traducir() {
-        while (this.index < this.tokens.length) {
-            this.instruccion();
-        }
-        return this.codigoPython;
-    }
-
-    tokenActual() {
-        return this.tokens[this.index];
-    }
-
-    avanzar() {
-        this.index++;
-    }
-
-    escribir(linea) {
-        this.codigoPython += "    ".repeat(this.indentacion) + linea + "\n";
-    }
-}
-
-
-class variables {
-    instruccion() {
-        const token = this.tokenActual();
-        if (!token) return;
-
-        if (["INT", "FLOAT", "BOOLEAN"].includes(token.tipo)) {
-            this.declaracion();
-        } else if (token.tipo === "IDENTIFICADOR") {
-            this.asignacion();
-        } else if (token.tipo === "IF") {
-            this.ifStatement();
-        } else if (token.tipo === "WHILE") {
-            this.whileStatement();
-        } else if (token.tipo === "SYM" && token.lexema === "{") {
-            this.bloque();
-        } else {
-            this.avanzar(); // ignorar token no traducible
-        }
-    }
     declaracion() {
         this.avanzar(); // tipo
         const nombre = this.tokenActual()?.lexema;
@@ -94,7 +54,48 @@ class variables {
         this.indentacion--;
         this.avanzar(); // }
     }
+    instruccion() {
+        const token = this.tokenActual();
+        if (!token) return;
+
+        if (["INT", "FLOAT", "BOOLEAN"].includes(token.tipo)) {
+            this.declaracion();
+        } else if (token.tipo === "IDENTIFICADOR") {
+            this.asignacion();
+        } else if (token.tipo === "IF") {
+            this.ifStatement();
+        } else if (token.tipo === "WHILE") {
+            this.whileStatement();
+        } else if (token.tipo === "SYM" && token.lexema === "{") {
+            this.bloque();
+        } else {
+            this.avanzar(); // ignorar token no traducible
+        }
+    }
+    traducir() {
+        while (this.index < this.tokens.length) {
+            this.instruccion();
+        }
+        return this.codigoPython;
+    }
+
+    tokenActual() {
+        return this.tokens[this.index];
+    }
+
+    avanzar() {
+        this.index++;
+    }
+
+    escribir(linea) {
+        this.codigoPython += "    ".repeat(this.indentacion) + linea + "\n";
+    }
 }
-const traductor = new Traductor(listaTokens);
+
+
+class variables {
+
+}
+const traductor = new Traductor(analizador.listaTokens);
 const codigoPython = traductor.traducir();
 console.log("Código Python generado:\n", codigoPython);

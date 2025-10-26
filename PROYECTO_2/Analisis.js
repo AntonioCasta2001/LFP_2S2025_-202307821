@@ -281,7 +281,7 @@ let entrada = ` public class Clase{
         int x = 2+2;
         int y = 4;
         char z = "David";
-        float c = 4.6;
+        double c = 462;
     }
 }
 `;
@@ -321,7 +321,7 @@ export class Parser {
         this.index = 0;
         this.errors = [];
     }
-
+    
     tokenActual() {
         return this.tokens[this.index];
     }
@@ -341,6 +341,7 @@ export class Parser {
     }
 
     parse() {
+    console.log("Parseando...");
         while (this.index < this.tokens.length) {
             this.instruccion();
         }
@@ -356,7 +357,7 @@ export class Parser {
             return;
         }
 
-        if (["INT","FLOAT","BOOLEAN", "CHAR"].includes(token.tipo)) {
+        if (["INT","DOUBLE","BOOLEAN", "CHAR"].includes(token.tipo)) {
             this.declaracion();
         } else if (token.tipo === "IDENTIFICADOR") {
             this.asignacion();
@@ -397,17 +398,8 @@ export class Parser {
     }
 
     termino() {
-        const token = this.tokenActual();
-        if (["ENTERO", "FLOAT", "IDENTIFICADOR","BOOLEAN", "TRUE", "FALSE"].includes(token?.tipo)) {
-            this.avanzar();
-        } else {
-            this.errors.push(`Expresión inválida en línea ${token?.linea}`);
-            this.avanzar();
-        }
-    }
-    termino() {
     const token = this.tokenActual();
-    if (["ENTERO", "FLOAT", "BOOLEAN", "CHAR", "CADENA"].includes(token?.tipo)) {
+    if (["ENTERO", "DOUBLE", "BOOLEAN", "CHAR", "CADENA"].includes(token?.tipo)) {
         this.avanzar();
     } else {
         this.errors.push(`Expresión inválida en línea ${token?.linea}`);
@@ -472,7 +464,7 @@ if (analizador.listaError.length === 0) {
 }
 
 /* traductor */
-/*
+
 class Traductor {
     constructor(tokens) {
         this.tokens = tokens;
@@ -573,4 +565,4 @@ class variables {
 }
 const traductor = new Traductor(analizador.listaTokens);
 const codigoPython = traductor.traducir();
-console.log("Código Python generado:\n", codigoPython);*/
+console.log("Código Python generado:\n", codigoPython);
