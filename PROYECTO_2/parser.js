@@ -1,12 +1,13 @@
 import AnalizadorLexico from "./Analisis.js"
-
+const analizador = new AnalizadorLexico();
+analizador.analizar(entrada);
 export class Parser {
     constructor(tokens) {
         this.tokens = tokens;
         this.index = 0;
         this.errors = [];
     }
-
+    
     tokenActual() {
         return this.tokens[this.index];
     }
@@ -26,6 +27,7 @@ export class Parser {
     }
 
     parse() {
+    console.log("Parseando...");
         while (this.index < this.tokens.length) {
             this.instruccion();
         }
@@ -41,7 +43,7 @@ export class Parser {
             return;
         }
 
-        if (["INT", "FLOAT", "BOOLEAN"].includes(token.tipo)) {
+        if (["INT","DOUBLE","BOOLEAN", "CHAR"].includes(token.tipo)) {
             this.declaracion();
         } else if (token.tipo === "IDENTIFICADOR") {
             this.asignacion();
@@ -49,8 +51,10 @@ export class Parser {
             this.ifStatement();
         } else if (token.tipo === "WHILE") {
             this.whileStatement();
-        } else if (token.tipo === "SYM" && token.lexema === "{") {
+        } else if (token.tipo === "LLAVE_ABRE" && token.lexema === "{") {
             this.bloque();
+        }  else if (token.tipo === "CENTINELA" && token.lexema === "#"){
+            this.avanzar();
         } else {
             this.errors.push(`Instrucción inválida en línea ${token.linea}`);
             this.avanzar();
@@ -63,13 +67,13 @@ export class Parser {
             this.avanzar();
             this.expresion();
         }
-        this.coincidir("PUNTO&COMA"); // ;
+        this.coincidir("SIMBOLO"); // ;
     }
     asignacion() {
         this.avanzar(); // ID
         if (!this.coincidir("OP")) return;
         this.expresion();
-        this.coincidir("SYM"); // ;
+        this.coincidir("SIMBOLO"); // ;
     }
     expresion() {
         this.termino();
@@ -80,24 +84,23 @@ export class Parser {
     }
 
     termino() {
-        const token = this.tokenActual();
-        if (["INT", "FLOAT", "IDENTIFICADOR"].includes(token?.tipo)) {
-            this.avanzar();
-        } else {
-            this.errors.push(`Expresión inválida en línea ${token?.linea}`);
-            this.avanzar();
-        }
+    const token = this.tokenActual();
+    if (["ENTERO", "DOUBLE", "BOOLEAN", "CHAR", "CADENA"].includes(token?.tipo)) {
+        this.avanzar();
+    } else {
+        this.errors.push(`Expresión inválida en línea ${token?.linea}`);
+        this.avanzar();
     }
+}
     ifStatement() {
         this.avanzar(); // if
-        this.coincidir("SYM"); // (
+        this.coincidir("PARENTESIS_ABRE"); // (
         this.expresion();
-        this.coincidir("SYM"); // )
+        this.coincidir("PARENTESIS_CIERRA"); // )
         this.instruccion(); // cuerpo
     }
     bloque() {
         this.coincidir("LLAVE_ABRE");
-        this.termino() // {
         while (this.tokenActual()?.lexema !== "}") {
             this.instruccion();
         }
@@ -122,25 +125,11 @@ export class Parser {
                 this.coincidir("PARENTESIS_CIERRA");
                 this.bloque(); // o instrucciones dentro de la clase o función
                 this.coincidir("LLAVE_CIERRA");
+                this.coincidir("LLAVE_CIERRA");
             } else if (!this.coincidir("CLASS")) {
                 this.errors.push("Se esperaba 'class' después de 'public'");
                 return;
             }
         }
-    }
-}
-
-const analizador = new AnalizadorLexico();
-analizador.analizar(entrada); // donde codigoFuente es un string con el código Java
-
-if (analizador.listaError.length === 0) {
-    const parser = new Parser(analizador.listaTokens);
-    const erroresSintacticos = parser.parse();
-
-    if (erroresSintacticos.length === 0) {
-        console.log("✅ Análisis sintáctico exitoso.");
-    } else {
-        console.log("❌ Errores sintácticos:");
-        erroresSintacticos.forEach((e, i) => console.log(`${i + 1}. ${e}`));
     }
 }
